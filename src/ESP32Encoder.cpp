@@ -153,34 +153,47 @@ void ESP32Encoder::attach(int a, int b, encType et) {
 	// Set data now that pin attach checks are done
 	unit = (pcnt_unit_t) index;
 	this->aPinNumber = (gpio_num_t) a;
-	this->bPinNumber = (gpio_num_t) b;
+	if (et != encType::counter) {
+		this->bPinNumber = (gpio_num_t) b;
+		gpio_pad_select_gpio(bPinNumber);
+		gpio_set_direction(bPinNumber, GPIO_MODE_INPUT);
+	}
+	
 
 	//Set up the IO state of hte pin
-	gpio_pad_select_gpio(aPinNumber);
-	gpio_pad_select_gpio(bPinNumber);
+	gpio_pad_select_gpio(aPinNumber);	
 	gpio_set_direction(aPinNumber, GPIO_MODE_INPUT);
-	gpio_set_direction(bPinNumber, GPIO_MODE_INPUT);
+
 	if(useInternalWeakPullResistors == puType::down){
 		gpio_pulldown_en(aPinNumber);
+		if (et != encType::counter)
 		gpio_pulldown_en(bPinNumber);
 	}
 	if(useInternalWeakPullResistors == puType::up){
 		gpio_pullup_en(aPinNumber);
+		if (et != encType::counter)
 		gpio_pullup_en(bPinNumber);
 	}
 	// Set up encoder PCNT configuration
 	// Configure channel 0
 	r_enc_config.pulse_gpio_num = aPinNumber; //Rotary Encoder Chan A
-	r_enc_config.ctrl_gpio_num = bPinNumber;    //Rotary Encoder Chan B
+	
+	if (et != encType::counter) {
+		r_enc_config.ctrl_gpio_num = bPinNumber;    //Rotary Encoder Chan B
+		r_enc_config.pos_mode = et != encType::single ? PCNT_COUNT_DEC : PCNT_COUNT_DIS; //Count Only On Rising-Edges
+		r_enc_config.neg_mode = PCNT_COUNT_INC;   // Discard Falling-Edge
+		r_enc_config.lctrl_mode = PCNT_MODE_KEEP;    // Rising A on HIGH B = CW Step
+		r_enc_config.hctrl_mode = PCNT_MODE_REVERSE; // Rising A on LOW B = CCW Step
+	} else {
+		r_enc_config.pos_mode = PCNT_COUNT_INC;
+	}
+	
 
 	r_enc_config.unit = unit;
 	r_enc_config.channel = PCNT_CHANNEL_0;
-
-	r_enc_config.pos_mode = et != encType::single ? PCNT_COUNT_DEC : PCNT_COUNT_DIS; //Count Only On Rising-Edges
-	r_enc_config.neg_mode = PCNT_COUNT_INC;   // Discard Falling-Edge
-
-	r_enc_config.lctrl_mode = PCNT_MODE_KEEP;    // Rising A on HIGH B = CW Step
-	r_enc_config.hctrl_mode = PCNT_MODE_REVERSE; // Rising A on LOW B = CCW Step
+	
+	
+	
 
 	r_enc_config		.counter_h_lim = _INT16_MAX;
 	r_enc_config		.counter_l_lim = _INT16_MIN ;
@@ -188,8 +201,13 @@ void ESP32Encoder::attach(int a, int b, encType et) {
 	pcnt_unit_config(&r_enc_config);
 
 	// Configure channel 0
-	r_enc_config.pulse_gpio_num = bPinNumber; //make prior control into signal
-	r_enc_config.ctrl_gpio_num = aPinNumber;    //and prior signal into control
+	if (et != encType::counter) {
+		r_enc_config.pulse_gpio_num = bPinNumber; //make prior control into signal
+		r_enc_config.ctrl_gpio_num = aPinNumber;    //and prior signal into control
+	} else {
+		r_enc_config.pulse_gpio_num = aPinNumber;
+	}
+	
 
 	r_enc_config.channel = PCNT_CHANNEL_1; // channel 1
 
@@ -270,6 +288,9 @@ void ESP32Encoder::attachHalfQuad(int aPintNumber, int bPinNumber) {
 }
 void ESP32Encoder::attachSingleEdge(int aPintNumber, int bPinNumber) {
 	attach(aPintNumber, bPinNumber, encType::single);
+}
+void ESP32Encoder::attachCounter(int aPintNumber) {
+	attach(aPintNumber, aPintNumber, encType::counter);
 }
 void ESP32Encoder::attachFullQuad(int aPintNumber, int bPinNumber) {
 	attach(aPintNumber, bPinNumber, encType::full);
