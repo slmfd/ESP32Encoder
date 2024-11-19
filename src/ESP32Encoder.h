@@ -16,7 +16,8 @@
 enum class encType {
 	single,
 	half,
-	full
+	full,
+	counter
 };
 
 enum class puType {
@@ -44,6 +45,7 @@ public:
 	void attachHalfQuad(int aPintNumber, int bPinNumber);
 	void attachFullQuad(int aPintNumber, int bPinNumber);
 	void attachSingleEdge(int aPintNumber, int bPinNumber);
+	void attachCounter(int aPintNumber);
 	int64_t getCount();
 	int64_t clearCount();
 	int64_t pauseCount();
