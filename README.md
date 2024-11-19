@@ -6,4 +6,4 @@ use as follows:
 
 ESP32Encoder pulseCounter;
 
-pulse counter.attachCounter(PIN);
+pulseCounter.attachCounter(PIN);
